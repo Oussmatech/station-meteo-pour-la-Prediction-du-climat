@@ -1,1 +1,62 @@
 
+#define BLYNK_PRINT Serial
+#include <WiFi.h>              // Bibliothèque WiFi pour ESP32
+#include <BlynkSimpleEsp32.h>  // Bibliothèque Blynk pour ESP32
+#include <DHT.h>               // Bibliothèque DHT pour capteur de température et humidité
+
+// Remplacez par votre Token d'authentification Blynk
+char auth[] = "VotreAuthToken";
+// Remplacez par vos identifiants Wi-Fi
+char ssid[] = "VotreSSID";
+char pass[] = "VotrePassword";
+
+// Configuration des capteurs
+#define DHTPIN 2        // Broche connectée au capteur DHT
+#define DHTTYPE DHT22   // Modèle de capteur : DHT11 ou DHT22
+#define LDR_PIN A0      // Broche analogique pour le capteur de luminosité (LDR)
+
+DHT dht(DHTPIN, DHTTYPE);
+
+// Pins virtuelles Blynk
+#define VPIN_TEMP  V0  // Température
+#define VPIN_HUM   V1  // Humidité
+#define VPIN_LDR   V2  // Luminosité
+
+void setup() {
+  Serial.begin(9600);
+  delay(100);
+
+  // Initialisation Blynk et Wi-Fi
+  Blynk.begin(auth, ssid, pass);
+
+  // Démarrage du capteur DHT
+  dht.begin();
+}
+
+void loop() {
+  // Gère les communications Blynk
+  Blynk.run();
+
+  // Lecture des capteurs
+  float humidity = dht.readHumidity();
+  float temperature = dht.readTemperature();
+  int ldrValue = analogRead(LDR_PIN);
+
+  // Affichage sur le port série
+  Serial.print("Temp: "); Serial.print(temperature); Serial.print(" °C | ");
+  Serial.print("Hum: "); Serial.print(humidity); Serial.print(" % | ");
+  Serial.print("Lux: "); Serial.println(ldrValue);
+
+  // Envoi des données à l'application Blynk
+  Blynk.virtualWrite(VPIN_TEMP, temperature);
+  Blynk.virtualWrite(VPIN_HUM, humidity);
+  Blynk.virtualWrite(VPIN_LDR, ldrValue);
+
+  // Détection du risque de brouillard
+  if (temperature < 10.0 && humidity > 90.0 && ldrValue < 300) {
+    Blynk.notify("⚠️ Risque de Brouillard détecté !");
+  }
+
+  // Attente avant la prochaine mesure
+  delay(2000);
+}
